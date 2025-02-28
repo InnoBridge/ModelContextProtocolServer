@@ -7,6 +7,7 @@ import org.springframework.web.reactive.function.server.RouterFunction;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.github.innobridge.mcpserver.tools.CalculatorTool;
+import io.github.innobridge.mcpserver.tools.WeatherTool;
 import io.modelcontextprotocol.server.McpServer;
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.server.McpSyncServer;
@@ -19,7 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Configuration
 @Slf4j
-public class MCPConfiguration {
+public class McpConfiguration {
     
     @Bean
     public ObjectMapper objectMapper() {
@@ -40,20 +41,21 @@ public class MCPConfiguration {
     }
     
     @Bean(destroyMethod = "close")
-    public McpSyncServer mcpSyncServer(WebFluxSseServerTransport transport) {
+    public McpSyncServer mcpSyncServer(WebFluxSseServerTransport transport, 
+                                       CalculatorTool calculatorTool,
+                                       WeatherTool weatherTool) {
         log.info("Initializing McpSyncServer with transport: {}", transport);
         
         // Create a server with custom configuration
         McpSyncServer syncServer = McpServer.sync(transport)
             .serverInfo(new Implementation("my-server", "1.0.0"))
             .capabilities(ServerCapabilities.builder()
-                .resources(true, true)  // Enable resource support with subscription
                 .tools(true)         // Enable tool support
                 .prompts(true)       // Enable prompt support
                 .logging()           // Enable logging support
                 .build())
             .build();
-
+        
         // Send initial logging notification
         syncServer.loggingNotification(LoggingMessageNotification.builder()
             .level(LoggingLevel.INFO)
@@ -61,14 +63,20 @@ public class MCPConfiguration {
             .data("Server initialized")
             .build());
 
-        // Create and register the calculator tool
-        CalculatorTool calculatorTool = new CalculatorTool();
-        var syncToolRegistration = new McpServerFeatures.SyncToolRegistration(
+        // Register the calculator tool
+        var calculatorToolRegistration = new McpServerFeatures.SyncToolRegistration(
             calculatorTool.getToolDefinition(),
             calculatorTool
         );
+        
+        // Register the weather tool
+        var weatherToolRegistration = new McpServerFeatures.SyncToolRegistration(
+            weatherTool.getToolDefinition(),
+            weatherTool
+        );
 
-        syncServer.addTool(syncToolRegistration);
+        syncServer.addTool(calculatorToolRegistration);
+        syncServer.addTool(weatherToolRegistration);
 
         log.info("MCP Server initialized with capabilities: tools={}, prompts={}, resources={}",
                 syncServer.getServerCapabilities().tools(),
