@@ -1,26 +1,20 @@
 package io.github.innobridge.mcpserver.configuration;
 
-import java.util.List;
-import java.util.Map;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.reactive.function.server.RouterFunction;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.github.innobridge.mcpserver.tools.CalculatorTool;
 import io.modelcontextprotocol.server.McpServer;
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.server.transport.WebFluxSseServerTransport;
-import io.modelcontextprotocol.spec.McpSchema;
-import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.Implementation;
 import io.modelcontextprotocol.spec.McpSchema.LoggingLevel;
 import io.modelcontextprotocol.spec.McpSchema.LoggingMessageNotification;
 import io.modelcontextprotocol.spec.McpSchema.ServerCapabilities;
-import io.modelcontextprotocol.spec.McpSchema.TextContent;
-import io.modelcontextprotocol.spec.McpSchema.Tool;
 import lombok.extern.slf4j.Slf4j;
 
 @Configuration
@@ -67,38 +61,12 @@ public class MCPConfiguration {
             .data("Server initialized")
             .build());
 
-        // Create the calculator tool with JSON schema string
-        var calculatorTool = new Tool(
-            "calculator",
-            "Basic calculator",
-            """
-            {
-                "type": "object",
-                "properties": {
-                    "operation": {
-                        "type": "string"
-                    },
-                    "a": {
-                        "type": "number"
-                    },
-                    "b": {
-                        "type": "number"
-                    }
-                },
-                "required": ["operation", "a", "b"]
-            }
-            """
-        );
-
+        // Create and register the calculator tool
+        CalculatorTool calculatorTool = new CalculatorTool();
         var syncToolRegistration = new McpServerFeatures.SyncToolRegistration(
-            calculatorTool,
-            arguments -> {
-                // Implement your calculator logic here
-                return new CallToolResult(
-                    List.of(new TextContent("Result will go here")),
-                    false
-                );
-            });
+            calculatorTool.getToolDefinition(),
+            calculatorTool
+        );
 
         syncServer.addTool(syncToolRegistration);
 
