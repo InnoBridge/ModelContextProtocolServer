@@ -3,27 +3,46 @@ package io.github.innobridge.mcpserver.configuration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.reactive.function.server.RouterFunction;
-import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.github.innobridge.mcpserver.tools.CalculatorTool;
 import io.modelcontextprotocol.server.McpServer;
+import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.server.transport.WebFluxSseServerTransport;
 import io.modelcontextprotocol.spec.McpSchema.Implementation;
 import io.modelcontextprotocol.spec.McpSchema.LoggingLevel;
 import io.modelcontextprotocol.spec.McpSchema.LoggingMessageNotification;
 import io.modelcontextprotocol.spec.McpSchema.ServerCapabilities;
-import io.modelcontextprotocol.spec.ServerMcpTransport;
 import lombok.extern.slf4j.Slf4j;
 
 @Configuration
-@EnableWebMvc
 @Slf4j
 public class MCPConfiguration {
-    // Configuration beans will be added here
+    
+    @Bean
+    public ObjectMapper objectMapper() {
+        return new ObjectMapper();
+    }
+    
+    @Bean
+    public WebFluxSseServerTransport webFluxSseServerTransport(ObjectMapper mapper) {
+        String endpoint = "/mcp/message";
+        log.info("Creating WebFluxSseServerTransport with endpoint: {}", endpoint);
+        return new WebFluxSseServerTransport(mapper, endpoint);
+    }
+    
+    @Bean
+    public RouterFunction<?> mcpRouterFunction(WebFluxSseServerTransport transport) {
+        log.info("Registering RouterFunction for MCP endpoint");
+        return transport.getRouterFunction();
+    }
+    
     @Bean(destroyMethod = "close")
-    public McpSyncServer mcpSyncServer(ServerMcpTransport transport) {
+    public McpSyncServer mcpSyncServer(WebFluxSseServerTransport transport) {
+        log.info("Initializing McpSyncServer with transport: {}", transport);
+        
         // Create a server with custom configuration
         McpSyncServer syncServer = McpServer.sync(transport)
             .serverInfo(new Implementation("my-server", "1.0.0"))
@@ -42,19 +61,19 @@ public class MCPConfiguration {
             .data("Server initialized")
             .build());
 
-        log.info("MCP Server initialized");
+        // Create and register the calculator tool
+        CalculatorTool calculatorTool = new CalculatorTool();
+        var syncToolRegistration = new McpServerFeatures.SyncToolRegistration(
+            calculatorTool.getToolDefinition(),
+            calculatorTool
+        );
+
+        syncServer.addTool(syncToolRegistration);
+
+        log.info("MCP Server initialized with capabilities: tools={}, prompts={}, resources={}",
+                syncServer.getServerCapabilities().tools(),
+                syncServer.getServerCapabilities().prompts(),
+                syncServer.getServerCapabilities().resources());
         return syncServer;
-    }
-
-    @Bean
-    WebFluxSseServerTransport webFluxSseServerTransport(ObjectMapper mapper) {
-        log.info("Creating WebFluxSseServerTransport with endpoint: /mcp/message");
-        return new WebFluxSseServerTransport(mapper, "/mcp/message");
-    }
-
-    @Bean
-    RouterFunction<?> mcpRouterFunction(WebFluxSseServerTransport transport) {
-        log.info("Registering RouterFunction for endpoint: {}", transport.getRouterFunction());
-        return transport.getRouterFunction();
     }
 }
