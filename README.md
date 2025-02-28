@@ -8,6 +8,21 @@
 curl -N -H "Accept: text/event-stream" http://localhost:8081/sse
 ```
 
+### Connect to stdio
+Generate Java artifact
+```
+./mvnw clean install
+```
+
+Starting stdio server
+```bash
+java -Dtransport.mode=stdio \
+     -Dspring.main.web-application-type=none \
+     -Dspring.main.banner-mode=off \
+     -Dlogging.file.name=mcpserver.log \
+     -jar target/mcpserver-0.0.1-SNAPSHOT.jar
+```
+
 ### Send a tool/list request
 Example 
 
@@ -48,4 +63,3 @@ Response
 ```
 event:message
 data:{"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","type":"text","text":"Current weather in San Francisco, United States of America: Partly cloudy, 11.1°C, Precipitation: 0.0 mm"}],"isError":false}}
-```
