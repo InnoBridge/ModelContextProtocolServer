@@ -1,5 +1,6 @@
 package io.github.innobridge.mcpserver.configuration;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.reactive.function.server.RouterFunction;
@@ -11,7 +12,9 @@ import io.github.innobridge.mcpserver.tools.WeatherTool;
 import io.modelcontextprotocol.server.McpServer;
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.server.McpSyncServer;
+import io.modelcontextprotocol.server.transport.StdioServerTransport;
 import io.modelcontextprotocol.server.transport.WebFluxSseServerTransport;
+import io.modelcontextprotocol.spec.ServerMcpTransport;
 import io.modelcontextprotocol.spec.McpSchema.Implementation;
 import io.modelcontextprotocol.spec.McpSchema.LoggingLevel;
 import io.modelcontextprotocol.spec.McpSchema.LoggingMessageNotification;
@@ -28,20 +31,29 @@ public class McpConfiguration {
     }
     
     @Bean
+    @ConditionalOnProperty(prefix = "transport", name = "mode", havingValue = "webflux", matchIfMissing = true)
     public WebFluxSseServerTransport webFluxSseServerTransport(ObjectMapper mapper) {
         String endpoint = "/mcp/message";
         log.info("Creating WebFluxSseServerTransport with endpoint: {}", endpoint);
         return new WebFluxSseServerTransport(mapper, endpoint);
     }
+
+    @Bean
+    @ConditionalOnProperty(prefix = "transport", name = "mode", havingValue = "stdio")
+    public StdioServerTransport stdioServerTransport() {
+        log.info("Creating StdioServerTransport");
+        return new StdioServerTransport();
+    }
     
     @Bean
+    @ConditionalOnProperty(prefix = "transport", name = "mode", havingValue = "webflux", matchIfMissing = true)
     public RouterFunction<?> mcpRouterFunction(WebFluxSseServerTransport transport) {
         log.info("Registering RouterFunction for MCP endpoint");
         return transport.getRouterFunction();
     }
     
     @Bean(destroyMethod = "close")
-    public McpSyncServer mcpSyncServer(WebFluxSseServerTransport transport, 
+    public McpSyncServer mcpSyncServer(ServerMcpTransport transport, 
                                        CalculatorTool calculatorTool,
                                        WeatherTool weatherTool) {
         log.info("Initializing McpSyncServer with transport: {}", transport);
