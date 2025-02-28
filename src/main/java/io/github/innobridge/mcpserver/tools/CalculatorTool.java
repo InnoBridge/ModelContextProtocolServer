@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
+import org.springframework.stereotype.Component;
+
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.TextContent;
 import io.modelcontextprotocol.spec.McpSchema.Tool;
@@ -11,8 +13,9 @@ import io.modelcontextprotocol.spec.McpSchema.Tool;
 /**
  * CalculatorTool provides a simple calculator functionality as a tool for the MCP server.
  */
+@Component
 public class CalculatorTool implements Function<Map<String, Object>, CallToolResult> {
-    
+ 
     private final Tool toolDefinition;
     
     public CalculatorTool() {
