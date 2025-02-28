@@ -63,7 +63,8 @@ public class McpConfiguration {
             .serverInfo(new Implementation("my-server", "1.0.0"))
             .capabilities(ServerCapabilities.builder()
                 .tools(true)         // Enable tool support
-                .prompts(true)       // Enable prompt support
+                .prompts(false)      // Change to false if not implementing prompts
+                .resources(false,false)
                 .logging()           // Enable logging support
                 .build())
             .build();
